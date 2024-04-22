@@ -1,0 +1,9 @@
+{
+    "path" : "data/",
+    "test_set_filename" : "Test_SentenceFilenames.csv",
+    "sample_rate" : 16000,
+    "frame_size" : 1024,
+    "hop" : 512,
+    "test_size" : 0.3,
+    "random_state" : 50
+}
