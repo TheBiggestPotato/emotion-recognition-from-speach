@@ -3,46 +3,72 @@ import torch.nn as nn
 import torch.optim as optim
 
 class SpeechEmotionRecognitionModel(nn.Module):
-    def __init__(self, input_shape, num_classes):
+    def __init__(self):
         super(SpeechEmotionRecognitionModel, self).__init__()
-        # Define your model architecture here
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1)
-        self.fc1 = nn.Linear(64 * input_shape[0] * input_shape[1], 128)
-        self.fc2 = nn.Linear(128, num_classes)
-        self.relu = nn.GELU()
+
+        self.conv_stft = nn.Sequential(
+            nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        ).float()
+        self.fc_amplitude = nn.Linear(1, 32).float()
+        self.fc_envelope = nn.Linear(1, 32).float()
+        self.fc_frequency = nn.Linear(1, 32).float()
+        
+        stft_output_shape = self.conv_stft(torch.zeros((1, 1, 32, 32))).numel()
+        amplitude_output_shape = self.fc_amplitude(torch.zeros((1, 1))).numel()
+        envelope_output_shape = self.fc_envelope(torch.zeros((1, 1))).numel()
+        frequency_output_shape = self.fc_frequency(torch.zeros((1, 1))).numel()
+        
+        combined_input_size = (stft_output_shape + amplitude_output_shape +
+                               envelope_output_shape + frequency_output_shape)
+
+        self.fc_combine = nn.Sequential(
+            nn.Linear(combined_input_size, 32),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(32, 16),
+            nn.ReLU(),
+            nn.Dropout(0.5)
+        )
+
+        self.fc_output = nn.Linear(32, 2)
+
+        self.gelu = nn.GELU()
         self.dropout = nn.Dropout(0.5)
 
-    def forward(self, x):
-        # Define forward pass
-        x = self.conv1(x)
-        x = self.relu(x)
-        x = self.conv2(x)
-        x = self.relu(x)
-        x = x.view(x.size(0), -1)
-        x = self.fc1(x)
-        x = self.relu(x)
-        x = self.dropout(x)
-        x = self.fc2(x)
-        return x
+    def forward(self, features):
+        stft = features['stft']
+        stft_output = self.conv_stft(stft).view(stft.size(0), -1)
 
-def train_model(model, train_loader, criterion, optimizer, num_epochs):
-    model.train()
-    for epoch in range(num_epochs):
-        running_loss = 0.0
-        for inputs, labels in train_loader:
-            optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
-        print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {running_loss:.4f}")
-    return model
+        amplitude = features['amplitude'].view(-1, 1)
+        amplitude_output = self.fc_amplitude(amplitude)
+        
+        envelope = features['envelope'].view(-1, 1)
+        envelope_output = self.fc_envelope(envelope)
+        
+        frequency = features['frequency'].view(-1, 1)
+        frequency_output = self.fc_frequency(frequency)
 
-def save_model(model, file_path):
-    torch.save(model.state_dict(), file_path)
+        stft_output = stft_output.view(32, -1)
+        amplitude_output = amplitude_output.view(32, -1)
+        envelope_output = envelope_output.view(32, -1)
+        frequency_output = frequency_output.view(32, -1)
 
-def load_model(file_path, model):
-    model.load_state_dict(torch.load(file_path))
-    return model
+        print("stft_output shape:", stft_output.shape)
+        print("amplitude_output shape:", amplitude_output.shape)
+        print("envelope_output shape:", envelope_output.shape)
+        print("frequency_output shape:", frequency_output.shape)
+        
+        combined_features = torch.cat([stft_output, amplitude_output, envelope_output, frequency_output], dim=1).T
+
+        print(f'combined_features shape: {combined_features.shape}')
+
+        print(self.fc_combine)
+        
+        combined_output = self.fc_combine(combined_features)
+        print(f'combined_output shape: {combined_output.shape}')
+        
+        output = self.fc_output(combined_output)
+        
+        return output

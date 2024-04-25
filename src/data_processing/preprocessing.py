@@ -1,7 +1,7 @@
 import json
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
-from metadata import MetadataLoader
+from .metadata import MetadataLoader
 import sys
 sys.path.insert(1, "src/util")
 from util import Utility
@@ -11,7 +11,7 @@ import librosa
 
 class Preprocessor(Dataset):
 
-    def __init__(self, metadata, config, mode : str = "train"):
+    def __init__(self, config, mode : str = "train"):
         
         with open(config, 'r') as f:
             self.config = json.load(f)
@@ -52,10 +52,10 @@ class Preprocessor(Dataset):
         return emotion, emotion_level
 
     def __len__(self):
-        return(len(self.metadata["sentence_filenames"]))
+        return(len(self.train_set) if self.mode == "train" else len(self.test_set))
 
     def __getitem__(self, index):
-
+        
         if self.mode == "train":
             row = self.train_set[index]
         else:
@@ -70,15 +70,15 @@ class Preprocessor(Dataset):
         stft = librosa.stft(signal, n_fft=self.frame_size, hop_length=self.hop_size, win_length=self.frame_size)
         stft = np.abs(stft) ** 2 
         stft = librosa.amplitude_to_db(stft, ref=np.max)
-
         stft = np.clip(stft, -80, 0)
         stft = np.expand_dims(stft, axis=0)
         
-        amplitude = np.abs(signal)
+        amplitude = np.abs(signal) * 0.5
+        # rms = np.sqrt(np.mean(amplitude**2))
+        # target_rms = 0.1
+        # amplitude = amplitude * (target_rms / rms)
         
         freqs = librosa.fft_frequencies(sr=sr, n_fft=self.frame_size)
-        
-        loudness = librosa.power_to_db(np.square(amplitude), ref=np.max)
         
         envelope = librosa.onset.onset_strength(y=signal, sr=sr)
         
@@ -88,7 +88,6 @@ class Preprocessor(Dataset):
             'stft': stft,
             'amplitude': amplitude,
             'frequency': freqs,
-            'loudness': loudness,
             'envelope': envelope
         }
         
