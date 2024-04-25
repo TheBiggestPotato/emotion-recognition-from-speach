@@ -19,12 +19,12 @@ class MetadataLoader:
         tabulated_votes_path = f"{csv_path}/processedResults/tabulatedVotes.csv"
         video_demographics_path = f"{csv_path}/VideoDemographics.csv"
         
-        self.sentence_filenames = pd.read_csv(sentence_filenames_path)
-        self.finished_emo_responses = pd.read_csv(finished_emo_responses_path)
-        self.finished_responses = pd.read_csv(finished_responses_path)
-        self.finished_responses_with_repeats = pd.read_csv(finished_responses_with_repeats_path)
-        self.tabulated_votes = pd.read_csv(tabulated_votes_path)
-        self.video_demographics = pd.read_csv(video_demographics_path)
+        self.sentence_filenames = pd.read_csv(sentence_filenames_path, low_memory=False)
+        self.finished_emo_responses = pd.read_csv(finished_emo_responses_path, low_memory=False)
+        self.finished_responses = pd.read_csv(finished_responses_path, low_memory=False)
+        self.finished_responses_with_repeats = pd.read_csv(finished_responses_with_repeats_path, low_memory=False)
+        self.tabulated_votes = pd.read_csv(tabulated_votes_path, low_memory=False)
+        self.video_demographics = pd.read_csv(video_demographics_path, low_memory=False)
 
     def get_metadata(self):
 

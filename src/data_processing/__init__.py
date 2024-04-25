@@ -1,4 +1,4 @@
-from .metadata import MetadataLoader
-from .preprocessing import Preprocessor, AudioDataset
+from data_processing.metadata import MetadataLoader
+from data_processing.preprocessing import Preprocessor, DatasetLoader
 
-__all__ = ['MetadataLoader', 'Preprocessor', 'AudioDataset']
+__all__ = ['MetadataLoader', 'Preprocessor', 'DatasetLoader']
