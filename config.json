@@ -2,9 +2,10 @@
     "path" : "data/",
     "test_set_filename" : "Test_SentenceFilenames.csv",
     "train_set_filename" : "Train_SentenceFilenames.csv",
+    "wav_split_folder": "data/audio/split/",
     "sample_rate" : 16000,
     "frame_size" : 512,
     "hop" : 256,
-    "test_size" : 0.3,
+    "test_size" : 0.15,
     "random_state" : 50
 }

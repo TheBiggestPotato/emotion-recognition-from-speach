@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import os
 
 class Utility:
 
@@ -11,12 +12,12 @@ class Utility:
     def emotion_label_to_number(label):
         
         label_to_number = {
-            'A': 1,
-            'D': 2,
-            'F': 3,
-            'H': 4,
-            'N': 5,
-            'S': 6,
+            'A': 0,
+            'D': 1,
+            'F': 2,
+            'H': 3,
+            'N': 4,
+            'S': 5,
         }
         
         return label_to_number.get(label, None)
@@ -24,12 +25,12 @@ class Utility:
     def number_to_emotion_label(number):
 
         number_to_label = {
-            1: 'A',
-            2: 'D',
-            3: 'F',
-            4: 'H',
-            5: 'N',
-            6: 'S',
+            0: 'A',
+            1: 'D',
+            2: 'F',
+            3: 'H',
+            4: 'N',
+            5: 'S',
         }
 
         return number_to_label.get(number, None)

@@ -1,7 +1,7 @@
 import json
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
-from .metadata import MetadataLoader
+from metadata import MetadataLoader
 import sys
 sys.path.insert(1, "src/util")
 from util import Utility
@@ -48,6 +48,8 @@ class Preprocessor(Dataset):
 
             emotion = label_row.iloc[0]["respEmo"]
             emotion_level = label_row.iloc[0]["respLevel"]
+        
+        emotion = int(Utility.emotion_label_to_number(emotion))
             
         return emotion, emotion_level
 
@@ -63,45 +65,30 @@ class Preprocessor(Dataset):
 
         filename = row[1]
         
-
         file_path = f"{self.config['path']}/audio/{filename}.wav"
+
         signal, sr = librosa.load(file_path, sr=self.sample_rate)
+
+        emotion, emotion_level = self.get_emotion_label_and_level(filename)
         
-        stft = librosa.stft(signal, n_fft=self.frame_size, hop_length=self.hop_size, win_length=self.frame_size)
-        stft = np.abs(stft) ** 2 
-        stft = librosa.amplitude_to_db(stft, ref=np.max)
-        stft = np.clip(stft, -80, 0)
-        stft = np.expand_dims(stft, axis=0)
+        stft = stft(signal)
         
-        amplitude = np.abs(signal) * 0.5
-        # rms = np.sqrt(np.mean(amplitude**2))
-        # target_rms = 0.1
-        # amplitude = amplitude * (target_rms / rms)
-        
-        freqs = librosa.fft_frequencies(sr=sr, n_fft=self.frame_size)
-        
-        envelope = librosa.onset.onset_strength(y=signal, sr=sr)
-        
-        emotion_label, emotion_level = self.get_emotion_label_and_level(filename)
-        
-        features = {
-            'stft': stft,
-            'amplitude': amplitude,
-            'frequency': freqs,
-            'envelope': envelope
+        print(stft.shape)
+
+        return {
+            "stft" : stft,
+            "emotion": emotion,
+            "emotion_level" : emotion_level
         }
-        
-        return features, (emotion_label, emotion_level)
 
 if __name__ == "__main__":
 
     config_file_path = 'config.json'
-    metadata_object = MetadataLoader(config_file_path)
 
-    preprocessor = Preprocessor(metadata_object, config_file_path)
+    preprocessor = Preprocessor(config_file_path)
 
     item_index_0 = preprocessor.__getitem__(0)
 
-    print(len(item_index_0[0]["amplitude"]))
-    print("STFT shape:", item_index_0[0]["stft"].shape)
-    print("Emotion label and level:", item_index_0[1])
+    print("STFT shape:", item_index_0["stft"].shape)
+    print(item_index_0["emotion"])
+    print(item_index_0["emotion_level"])

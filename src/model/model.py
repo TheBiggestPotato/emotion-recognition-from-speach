@@ -2,73 +2,45 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-class SpeechEmotionRecognitionModel(nn.Module):
+class SpeechEmotionRecognitionModel(torch.nn.Module):
     def __init__(self):
-        super(SpeechEmotionRecognitionModel, self).__init__()
-
-        self.conv_stft = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),
-            nn.GELU(),
-            nn.MaxPool2d(kernel_size=2, stride=2)
-        ).float()
-        self.fc_amplitude = nn.Linear(1, 32).float()
-        self.fc_envelope = nn.Linear(1, 32).float()
-        self.fc_frequency = nn.Linear(1, 32).float()
-        
-        stft_output_shape = self.conv_stft(torch.zeros((1, 1, 32, 32))).numel()
-        amplitude_output_shape = self.fc_amplitude(torch.zeros((1, 1))).numel()
-        envelope_output_shape = self.fc_envelope(torch.zeros((1, 1))).numel()
-        frequency_output_shape = self.fc_frequency(torch.zeros((1, 1))).numel()
-        
-        combined_input_size = (stft_output_shape + amplitude_output_shape +
-                               envelope_output_shape + frequency_output_shape)
-
-        self.fc_combine = nn.Sequential(
-            nn.Linear(combined_input_size, 32),
+        super(Model, self).__init__()
+        self.n_features = 8
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(1, self.n_features, kernel_size=3, stride=1, padding=0),
+            nn.BatchNorm2d(self.n_features),
             nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(32, 16),
+            nn.MaxPool2d(kernel_size=2))
+        
+        self.layer2 = nn.Sequential(
+            nn.Conv2d(self.n_features, 2 * self.n_features, kernel_size=2, stride=1, padding=0),
+            nn.BatchNorm2d(2 * self.n_features),
             nn.ReLU(),
-            nn.Dropout(0.5)
-        )
-
-        self.fc_output = nn.Linear(32, 2)
-
-        self.gelu = nn.GELU()
-        self.dropout = nn.Dropout(0.5)
-
-    def forward(self, features):
-        stft = features['stft']
-        stft_output = self.conv_stft(stft).view(stft.size(0), -1)
-
-        amplitude = features['amplitude'].view(-1, 1)
-        amplitude_output = self.fc_amplitude(amplitude)
+            nn.MaxPool2d(kernel_size=2))
         
-        envelope = features['envelope'].view(-1, 1)
-        envelope_output = self.fc_envelope(envelope)
+        self.layer3 = nn.Sequential(
+            nn.Conv2d(2 * self.n_features, 4 * self.n_features, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(4 * self.n_features),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2))
         
-        frequency = features['frequency'].view(-1, 1)
-        frequency_output = self.fc_frequency(frequency)
+        self.layer4 = nn.Sequential(
+            nn.Conv2d(4 * self.n_features, 4 * self.n_features, kernel_size=2, stride=1, padding=1),
+            nn.BatchNorm2d(4 * self.n_features),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2))
+        
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(4096, 120),
+            nn.ReLU(),
+            nn.Linear(120, 1))
 
-        stft_output = stft_output.view(32, -1)
-        amplitude_output = amplitude_output.view(32, -1)
-        envelope_output = envelope_output.view(32, -1)
-        frequency_output = frequency_output.view(32, -1)
+    def forward(self, x):
 
-        print("stft_output shape:", stft_output.shape)
-        print("amplitude_output shape:", amplitude_output.shape)
-        print("envelope_output shape:", envelope_output.shape)
-        print("frequency_output shape:", frequency_output.shape)
-        
-        combined_features = torch.cat([stft_output, amplitude_output, envelope_output, frequency_output], dim=1).T
-
-        print(f'combined_features shape: {combined_features.shape}')
-
-        print(self.fc_combine)
-        
-        combined_output = self.fc_combine(combined_features)
-        print(f'combined_output shape: {combined_output.shape}')
-        
-        output = self.fc_output(combined_output)
-        
-        return output
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.classifier(x)
+        return x
