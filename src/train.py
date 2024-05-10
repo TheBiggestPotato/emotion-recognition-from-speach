@@ -109,7 +109,7 @@ def train_model(model, train_dataset, config, device):
         progress_bar.set_postfix(loss=total_classification_loss, classification_accuracy=classification_accuracy)
 
         #print(f'Epoch {epoch + 1}: Classification Accuracy: {classification_accuracy}, MAE: {regression_mae}, RMSE: {regression_rmse}')
-        print(f'Epoch {epoch + 1}: Classification Accuracy: {classification_accuracy}')
+        print(f'\nEpoch {epoch + 1}: Classification Accuracy: {classification_accuracy}')
 
     return model
 
