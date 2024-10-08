@@ -1,18 +1,19 @@
 import json
 from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
-from .metadata import MetadataLoader
+from metadata import MetadataLoader
 import sys
 sys.path.insert(1, "src/util")
 from util import Utility
 import pandas as pd
 import numpy as np
 import librosa
-from .wav import multiple_split
+from wav import multiple_split
 import torch
 import os
 from sklearn.preprocessing import StandardScaler
 from scipy.io import wavfile
+import matplotlib.pyplot as plt
 
 class Preprocessor(Dataset):
 
@@ -36,8 +37,8 @@ class Preprocessor(Dataset):
 
         self.directory_path = f"{self.config['path']}audio"
 
-        self.split_all_wav_files(self.directory_path, 1)
-        self.pad_wav_files(self.directory_path + '/split')
+        # self.split_all_wav_files(self.directory_path, 1)
+        # self.pad_wav_files(self.directory_path + '/split')
 
 
     def pad_wav_files(self, folder_path, target_duration=1):
@@ -176,6 +177,42 @@ class Preprocessor(Dataset):
             "emotion": emotion,
             "emotion_level" : emotion_level
         }
+    
+    def viz(self, audio_file_path):
+        # Load the audio file
+        audio, sr = librosa.load(audio_file_path, sr=None)
+
+        # Compute the STFT
+        n_fft = 512  # Number of FFT points
+        hop_length = 256  # Number of samples between successive frames
+        D = librosa.stft(audio, n_fft=n_fft, hop_length=hop_length)
+
+        # Compute the magnitude and phase of the STFT
+        magnitude = np.abs(D)
+        phase = np.angle(D)
+        
+        # Create two plots side by side
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+
+        # Plot the spectrogram (magnitude)
+        img1 = librosa.display.specshow(librosa.amplitude_to_db(magnitude, ref=np.max), sr=sr, hop_length=hop_length, x_axis='time', y_axis='log', ax=ax1)
+        fig.colorbar(img1, ax=ax1, format='%+2.0f dB')
+        ax1.set(title='Spectrogram (Magnitude)')
+        
+        # Save the spectrogram
+        plt.savefig('spectrogram_magnitude.png')
+
+        # Plot the phaseogram (phase)
+        img2 = librosa.display.specshow(phase, sr=sr, hop_length=hop_length, x_axis='time', y_axis='log', ax=ax2)
+        fig.colorbar(img2, ax=ax2, format='%+2.2f rad')
+        ax2.set(title='Phaseogram (Phase)')
+        
+        # Save the phaseogram
+        plt.savefig('phaseogram_phase.png')
+
+        # Show the plots
+        plt.show()
+
 
 if __name__ == "__main__":
 
@@ -184,6 +221,8 @@ if __name__ == "__main__":
     preprocessor = Preprocessor(config_file_path)
 
     item_index_0 = preprocessor.__getitem__(0)
+
+    preprocessor.viz("data/audio/1001_DFA_ANG_XX.wav")
 
     print("STFT shape:", item_index_0["stft"].shape)
     print(item_index_0["emotion"])
